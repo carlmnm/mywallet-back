@@ -39,7 +39,6 @@ app.post('/signup', async (req, res) => {
     try {
         await db.collection("users").insertOne({
             name: userData.name,
-            CPF: userData.CPF,
             email: userData.email,
             password: passwordHash
         })
@@ -68,14 +67,14 @@ app.post('/signin', async (req, res) => {
             return res.sendStatus(422)
         }
         const token = uuid()
-        console.log(token)
+        //console.log(token)
         await db.collection("sessions").insertOne({
             userId: user._id,
             name: user.name,
             token: token
         })
         res.send(token)
-        console.log(`esse é seu token: ${token}`);
+        //console.log(`esse é seu token: ${token}`);
 
     } catch {
         return res.sendStatus(404)
@@ -86,7 +85,7 @@ app.post('/signin', async (req, res) => {
 app.get('/signin', async (req, res) => {
     const { authorization } = req.headers
     const token = authorization?.replace('Bearer ', '')
-    console.log(token)
+    //console.log(token)
 
     if (!token) return res.sendStatus(401)
 
