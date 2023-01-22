@@ -5,6 +5,7 @@ import { userSignUpSchema } from "../schemas/schema.js";
 import { MongoClient } from "mongodb";
 import bcrypt from "bcrypt"
 import { v4 as uuid } from "uuid"
+import dayjs from "dayjs";
 dotenv.config()
 
 const app = express()
@@ -32,11 +33,11 @@ app.post('/signup', async (req, res) => {
         return res.sendStatus(422)
     }
 
-    const userExists = await db.collection("users").findOne({email: userData.email})
+    const userExists = await db.collection("users").findOne({ email: userData.email })
     if (userExists) return res.sendStatus(409)
 
-    try{
-        await db.collection("users"). insertOne({
+    try {
+        await db.collection("users").insertOne({
             name: userData.name,
             CPF: userData.CPF,
             email: userData.email,
@@ -57,23 +58,24 @@ app.get('/signup', async (req, res) => {
     }
 })
 
-app.post('/signin' , async (req, res) => {
-    const {email, password } = req.body
+app.post('/signin', async (req, res) => {
+    const { email, password } = req.body
 
-    const user = await db.collection("users").findOne({email})
+    const user = await db.collection("users").findOne({ email })
 
-    try{
+    try {
         if (!user || !bcrypt.compareSync(password, user.password)) {
             return res.sendStatus(422)
-        } 
+        }
         const token = uuid()
         console.log(token)
         await db.collection("sessions").insertOne({
             userId: user._id,
-            token
+            name: user.name,
+            token: token
         })
         res.send(token)
-        //return res.sendStatus(200);
+        console.log(`esse é seu token: ${token}`);
 
     } catch {
         return res.sendStatus(404)
@@ -88,12 +90,12 @@ app.get('/signin', async (req, res) => {
 
     if (!token) return res.sendStatus(401)
 
-    const session = await db.collection("sessions").findOne({token})
+    const session = await db.collection("sessions").findOne({ token })
 
     if (!session) {
         return res.sendStatus(401)
     }
-    
+
     const user = await db.collection("users").findOne({
         _id: session.userId
     })
@@ -105,12 +107,76 @@ app.get('/signin', async (req, res) => {
     const sessionsList = await db.collection("sessions").find().toArray()
 
     try {
-        return res.send(sessionsList)
+        return res.send(session)
     } catch {
         return res.sendStatus(500).send(err.message)
     }
 
 })
 
+app.post('/in-and-out', async (req, res) => {
+    const { authorization } = req.headers
+    const historicData = req.body
+    const token = authorization?.replace('Bearer ', '')
+
+    if (!token) return res.sendStatus(401)
+
+    const session = await db.collection("sessions").findOne({ token })
+
+    if (!session) {
+        return res.sendStatus(401)
+    }
+
+    const user = await db.collection("users").findOne({
+        _id: session.userId
+    })
+
+    if (!user) {
+        return res.sendStatus(401)
+    }
+
+    try {
+        await db.collection("historic").insertOne({
+            userId: user._id,
+            value: historicData.value,
+            description: historicData.description,
+            type: historicData.type,
+            day: dayjs().format('DD'),
+            month: dayjs().format('MM'),
+            token: token
+        })
+        res.sendStatus(201)
+    } catch {
+        return res.sendStatus(500)
+    }
+})
+
+app.get('/in-and-out', async (req, res) => {
+    const { authorization } = req.headers
+    const token = authorization?.replace('Bearer ', '')
+
+    if (!token) return res.sendStatus(401)
+
+    const session = await db.collection("sessions").findOne({ token })
+
+    if (!session) {
+        return res.sendStatus(401)
+    }
+
+    const user = await db.collection("users").findOne({
+        _id: session.userId
+    })
+
+    if (!user) {
+        return res.sendStatus(401)
+    }
+
+    try {
+        const historicList = await db.collection("historic").find({userId: session.userId}).toArray()
+        return res.send([...historicList])
+    } catch {
+
+    }
+})
 
 app.listen(PORT, () => console.log(`Este servidor roda na porta: ${PORT}`))
