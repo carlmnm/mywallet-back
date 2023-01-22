@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
-import { userSignUpSchema } from "../schemas/schema.js";
+import { userSignUpSchema, userLoginSchema, entrysAndOutputsSchema } from "../schemas/schema.js";
 import { MongoClient } from "mongodb";
 import bcrypt from "bcrypt"
 import { v4 as uuid } from "uuid"
@@ -58,12 +58,18 @@ app.get('/signup', async (req, res) => {
 })
 
 app.post('/signin', async (req, res) => {
-    const { email, password } = req.body
+    //const { email, password } = req.body
+    const userLogin = req.body
 
-    const user = await db.collection("users").findOne({ email })
+    const user = await db.collection("users").findOne({email: userLogin.email})
+
+    const validation = userLoginSchema.validate(userLogin)
+    if (validation.error) {
+        return res.sendStatus(422)
+    }
 
     try {
-        if (!user || !bcrypt.compareSync(password, user.password)) {
+        if (!user || !bcrypt.compareSync(userLogin.password, user.password)) {
             return res.sendStatus(422)
         }
         const token = uuid()
@@ -117,6 +123,11 @@ app.post('/in-and-out', async (req, res) => {
     const { authorization } = req.headers
     const historicData = req.body
     const token = authorization?.replace('Bearer ', '')
+
+    const validation = entrysAndOutputsSchema.validate(historicData)
+    if (validation.error) {
+        return res.sendStatus(422)
+    }
 
     if (!token) return res.sendStatus(401)
 

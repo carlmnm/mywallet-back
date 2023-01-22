@@ -7,4 +7,15 @@ const userSignUpSchema = Joi.object({
     confirmPassword: Joi.any().valid(Joi.ref('password')).required()
 })
 
-export { userSignUpSchema }
+const userLoginSchema = Joi.object({
+    email: Joi.string().email().min(1).required(),
+    password: Joi.string().min(1).required()
+})
+
+const entrysAndOutputsSchema = Joi.object({
+    value: Joi.number().min(1).required(),
+    description: Joi.string().min(1).required(),
+    type: Joi.string().min(1).required()
+})
+
+export { userSignUpSchema, entrysAndOutputsSchema, userLoginSchema }
